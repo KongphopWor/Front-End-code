@@ -1,0 +1,148 @@
+import React, { useState, useEffect } from 'react';
+import { Modal, Button } from 'react-bootstrap';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Label, defs, linearGradient, stop } from 'recharts';
+import { saveAs } from 'file-saver'; // Import file-saver for saving files
+import * as XLSX from 'xlsx'; // Import XLSX library
+import { getFirestore, collection, getDocs } from 'firebase/firestore'; // Import Firestore functions
+
+import db from './Firebase'; // Assuming db is the Firestore instance imported from Firebase.js
+
+const ResultModal = ({ showModal, handleClose, itemName, itemTimestamp, itemDescription, itemMode, itemId }) => {
+    const [modalVisible, setModalVisible] = useState(false);
+    const [chartData, setChartData] = useState([]);
+
+    useEffect(() => {
+        setModalVisible(showModal);
+
+        if (showModal) {
+            fetchDataFromFirebase();
+        }
+    }, [showModal]);
+
+    const handleModalClose = () => {
+        setModalVisible(false);
+        handleClose();
+        window.location.reload();
+    };
+
+    const modeText = itemMode === 'Scanning_Mode' ? 'Scanning Mode' : 'Sweep Mode';
+
+    const fetchDataFromFirebase = async () => {
+        let data = [];
+
+        const dbInstance = getFirestore(db);
+
+        if (itemMode === 'Scanning_Mode') {
+            const querySnapshot = await getDocs(collection(dbInstance, 'Scanning_Mode'));
+            querySnapshot.forEach((doc) => {
+                if (doc.id === itemId) { // Filter data based on DocumentID
+                    const docData = doc.data();
+                    const num = docData.Num || 0;
+                    for (let i = 0; i <= num; i++) {
+                        const idKey = `ID${i}`;
+                        const idValue = docData[idKey];
+                        if (idValue) {
+                            const [x, count] = idValue.split(',');
+                            data.push({ x: Number(i), count: Number(count) });
+                        }
+                    }
+                }
+            });
+        } else if (itemMode === 'Sweep_Mode') {
+            const querySnapshot = await getDocs(collection(dbInstance, 'Sweep_Mode'));
+            querySnapshot.forEach((doc) => {
+                if (doc.id === itemId) { // Filter data based on DocumentID
+                    const docData = doc.data();
+                    const num = docData.Num || 0;
+                    let tempData = [];
+                    for (let i = 0; i <= num; i++) {
+                        const idKey = `ID${i}`;
+                        const idValue = docData[idKey];
+                        if (idValue) {
+                            const [x, count] = idValue.split(',');
+                            tempData.push({ x: parseFloat(x), count: Number(count) });
+                        }
+                    }
+                    // Sort the temporary array based on the x values
+                    tempData.sort((a, b) => a.x - b.x);
+                    // Push sorted data into the main data array
+                    data.push(...tempData);
+                }
+            });
+        }
+
+        setChartData(data);
+    };
+
+    // Set Y-axis and X-axis names based on the mode
+    const yAxisName = itemMode === 'Sweep_Mode' ? 'Count' : 'Count';
+    const xAxisName = itemMode === 'Sweep_Mode' ? 'LLD (Volt)' : 'Position';
+
+    // Prepare data for export
+    const dataSet = [
+        [xAxisName, yAxisName],
+        ...chartData.map(({ x, count }) => [x, count]),
+    ];
+
+    // Define Excel file name
+    const fileName = `${itemName}_Chart_Data.xlsx`;
+
+    // Function to handle export button click
+    const handleExportClick = () => {
+        const ws = XLSX.utils.aoa_to_sheet(dataSet);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Chart Data');
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const excelData = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(excelData, fileName);
+    };
+
+    return (
+        <Modal show={modalVisible} onHide={handleModalClose} dialogClassName="modal-lg">
+            <Modal.Header closeButton>
+                <Modal.Title className="text-primary fw-bold">{itemName}</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+                {itemId ? (
+                    <p style={{ marginLeft: '10px' }}><strong>Document ID:</strong> {itemId}</p>
+                ) : (
+                    <p style={{ marginLeft: '10px' }}>No document ID available</p>
+                )}
+                <p style={{ marginLeft: '10px' }}><strong>Timestamp:</strong> {itemTimestamp}</p>
+                <p style={{ marginLeft: '10px' }}><strong>Description:</strong> {itemDescription}</p>
+                <p style={{ marginLeft: '10px' }}><strong>Mode:</strong> {modeText}</p>
+
+                {/* Area Chart */}
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+                    <AreaChart width={700} height={300} data={chartData}>
+                        <defs>
+                            <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#077bff" stopOpacity={0.9} />
+                                <stop offset="95%" stopColor="#077bff" stopOpacity={0.2} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="x">
+                            <Label value={xAxisName} offset={-6} position="bottom" />
+                        </XAxis>
+                        <YAxis>
+                            <Label value={yAxisName} offset={0} position="left" angle={-90} />
+                        </YAxis>
+                        <Tooltip />
+                        <Area type="monotone" dataKey="count" stroke="#077bff" fill="url(#colorCount)" />
+                    </AreaChart>
+                </div>
+            </Modal.Body>
+            <Modal.Footer>
+                <Button variant="secondary" onClick={handleModalClose}>
+                    Close
+                </Button>
+                <Button variant="primary" onClick={handleExportClick}>
+                    Export
+                </Button>
+            </Modal.Footer>
+        </Modal>
+    );
+};
+
+export default ResultModal;

@@ -1,0 +1,327 @@
+import React, { useState, useEffect } from 'react';
+import { getFirestore, collection, getDocs, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import FirebaseApp from './Firebase';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faEdit, faTrash, faFile, faClock as faRegularClock } from '@fortawesome/free-solid-svg-icons';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
+import EditModal from './EditModal';
+import ResultModal from './ResultModal'; // Import ResultModal
+
+const ModeComponent = () => {
+    const scanningCollectionName = 'Scanning_Mode';
+    const sweepCollectionName = 'Sweep_Mode';
+    const [scanningData, setScanningData] = useState([]);
+    const [sweepData, setSweepData] = useState([]);
+    const [selectedItemId, setSelectedItemId] = useState(null);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [selectedItemMode, setSelectedItemMode] = useState(null);
+    
+    const [showResultModal, setShowResultModal] = useState(false);
+    const [selectedItemName, setSelectedItemName] = useState('');
+    const [selectedItemTimestamp, setSelectedItemTimestamp] = useState('');
+    const [selectedItemDescription, setSelectedItemDescription] = useState('');
+
+    const fetchScanningData = async () => {
+        const db = getFirestore(FirebaseApp);
+        const docRef = collection(db, scanningCollectionName);
+
+        try {
+            const snapshot = await getDocs(docRef);
+            const newData = snapshot.docs.map((doc) => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    updateTime: data.updateTime?.toDate()
+                };
+            });
+            newData.sort((a, b) => b.updateTime - a.updateTime);
+            setScanningData(newData);
+        } catch (error) {
+            console.error('Error fetching scanning data:', error);
+        }
+    };
+
+    const fetchSweepData = async () => {
+        const db = getFirestore(FirebaseApp);
+        const docRef = collection(db, sweepCollectionName);
+
+        try {
+            const snapshot = await getDocs(docRef);
+            const newData = snapshot.docs.map((doc) => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    updateTime: data.updateTime?.toDate()
+                };
+            });
+            newData.sort((a, b) => b.updateTime - a.updateTime);
+            setSweepData(newData);
+        } catch (error) {
+            console.error('Error fetching sweep data:', error);
+        }
+    };
+
+    const handleUpdateTimestamp = async (collectionName, id) => {
+        const db = getFirestore(FirebaseApp);
+        const docRef = doc(db, collectionName, id);
+
+        try {
+            await updateDoc(docRef, {
+                updateTime: serverTimestamp()
+            });
+            if (collectionName === scanningCollectionName) {
+                fetchScanningData();
+            } else if (collectionName === sweepCollectionName) {
+                fetchSweepData();
+            }
+        } catch (error) {
+            console.error('Error updating timestamp:', error);
+        }
+    };
+
+    const handleDeleteConfirmation = (id, mode) => {
+        setSelectedItemId(id);
+        setSelectedItemMode(mode);
+    };
+
+    const handleDelete = async () => {
+        if (selectedItemId && selectedItemMode) {
+            const collectionName = selectedItemMode === 'Scanning_Mode' ? scanningCollectionName : sweepCollectionName;
+            const db = getFirestore(FirebaseApp);
+            const docRef = doc(db, collectionName, selectedItemId);
+
+            try {
+                await deleteDoc(docRef);
+                if (collectionName === scanningCollectionName) {
+                    fetchScanningData();
+                } else if (collectionName === sweepCollectionName) {
+                    fetchSweepData();
+                }
+            } catch (error) {
+                console.error('Error deleting document:', error);
+            }
+        }
+        setSelectedItemId(null);
+        setSelectedItemMode(null);
+    };
+
+    const handleEdit = (id, mode) => {
+        setSelectedItemId(id);
+        setSelectedItemMode(mode);
+        setShowEditModal(true);
+    };
+
+    const handleShowResultModal = (id, name, timestamp, description, mode) => {
+        setSelectedItemId(id);
+        setSelectedItemName(name);
+        setSelectedItemTimestamp(timestamp);
+        setSelectedItemDescription(description);
+        setSelectedItemMode(mode);
+        setShowResultModal(true); // Show ResultModal when Result button is clicked
+    };
+
+    useEffect(() => {
+        fetchScanningData();
+        fetchSweepData();
+    }, []);
+
+    return (
+        <div>
+            <div id="scanning_mode" className='container' style={{ marginTop: '65px', backgroundColor: 'white' }}>
+                <h4>Scanning Mode</h4>
+                <table className="table table-striped table-hover">
+                    <thead className="table-dark">
+                        <tr>
+                        <th style={{ width: '250px' }}>Name</th>
+                        <th style={{ width: '250px' }}>Timestamp</th>
+                        <th style={{ width: '500px' }}>Description</th>
+                        <th style={{ width: '500px'}}></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {scanningData.map((item) => (
+                            <tr key={item.id}>
+                                <td>{item.Name}</td>
+                                <td>{item.updateTime?.toLocaleDateString()}</td>
+                                <td>{item.Description}</td>
+                                <td>
+                                    <div style={{ minwidth: '500px' }}>
+                                        <button
+                                            className="btn btn-primary"
+                                            style={{ margin: '2.5px', width: '86px' }}
+                                            onClick={() =>
+                                                handleShowResultModal(
+                                                    item.id,
+                                                    item.Name,
+                                                    item.updateTime?.toLocaleDateString(),
+                                                    item.Description,
+                                                    'Scanning_Mode'
+                                                )
+                                              }
+                                            title="Result"
+                                        >
+                                            <FontAwesomeIcon icon={faFile} />
+                                        </button>
+                                        <button
+                                            className="btn btn-warning"
+                                            style={{ margin: '2.5px' }}
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editModal"
+                                            title="Edit"
+                                            onClick={() => handleEdit(item.id, 'Scanning_Mode')} // Pass mode as 'Scanning_Mode'
+                                        >
+                                            <FontAwesomeIcon icon={faEdit} />
+                                        </button>
+
+                                        <button
+                                            className="btn btn-danger"
+                                            onClick={() => handleDeleteConfirmation(item.id, 'Scanning_Mode')} // Pass mode as 'Scanning_Mode'
+                                            style={{margin: '2.5px' }}
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteConfirmationModal"
+                                            title="Delete"
+                                        >
+                                            <FontAwesomeIcon icon={faTrash} />
+                                        </button>
+                                        <button
+                                            className="btn btn-info"
+                                            onClick={() => handleUpdateTimestamp(scanningCollectionName, item.id)}
+                                            style={{ margin: '2.5px' }}
+                                            data-bs-toggle="tooltip"
+                                            data-bs-placement="top"
+                                            title="Update Timestamp"
+                                        >
+                                            <FontAwesomeIcon icon={faRegularClock} />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                <DeleteConfirmationModal
+                    showModal={selectedItemId !== null}
+                    handleClose={() => setSelectedItemId(null)}
+                    handleConfirmedDelete={handleDelete}
+                    itemId={selectedItemId}
+                />
+                <EditModal
+                    showModal={showEditModal}
+                    handleClose={() => setShowEditModal(false)}
+                    itemId={selectedItemId}
+                    collectionName={selectedItemMode} // Pass the selected mode as the collection name
+                />
+                <ResultModal
+                    showModal={showResultModal}
+                    handleClose={() => setShowResultModal(false)}
+                    itemName={selectedItemName}
+                    itemTimestamp={selectedItemTimestamp}
+                    itemDescription={selectedItemDescription}
+                    itemMode={selectedItemMode}
+                    itemId={selectedItemId} // Pass itemId to ResultModal
+                />
+            </div>
+            <div id="sweep_mode" className='container' style={{ marginTop: '65px', backgroundColor: 'white' }}>
+                <h4>Sweep Mode</h4>
+                <table className="table table-striped table-hover">
+                    <thead className="table-dark">
+                        <tr>
+                            <th style={{ width: '250px' }}>Name</th>
+                            <th style={{ width: '250px' }}>Timestamp</th>
+                            <th style={{ width: '500px' }}>Description</th>
+                            <th style={{ width: '500px'}}></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {sweepData.map((item) => (
+                            <tr key={item.id}>
+                                <td>{item.Name}</td>
+                                <td>{item.updateTime?.toLocaleDateString()}</td>
+                                <td>{item.Description}</td>
+                                <td>
+                                    <div style={{ minwidth: '500px' }}>
+                                        <button
+                                            className="btn btn-primary"
+                                            style={{ margin: '2.5px', width: '86px' }}
+                                            onClick={() =>
+                                                handleShowResultModal(
+                                                    item.id,
+                                                    item.Name,
+                                                    item.updateTime?.toLocaleDateString(),
+                                                    item.Description,
+                                                    'Sweep_Mode'
+                                                )
+                                            }
+                                            title="Result"
+                                        >
+                                            <FontAwesomeIcon icon={faFile} />
+                                        </button>
+                                        <button
+                                            className="btn btn-warning"
+                                            style={{ margin: '2.5px' }}
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editModal"
+                                            title="Edit"
+                                            onClick={() => handleEdit(item.id, 'Sweep_Mode')} // Pass mode as 'Sweep_Mode'
+                                        >
+                                            <FontAwesomeIcon icon={faEdit} />
+                                        </button>
+                                        <button
+                                            className="btn btn-danger"
+                                            onClick={() => handleDeleteConfirmation(item.id, 'Sweep_Mode')} // Pass mode as 'Sweep_Mode'
+                                            style={{ margin: '2.5px' }}
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteConfirmationModal"
+                                            title="Delete"
+                                        >
+                                            <FontAwesomeIcon icon={faTrash} />
+                                        </button>
+                                        <button
+                                            className="btn btn-info"
+                                            onClick={() => handleUpdateTimestamp(sweepCollectionName, item.id)}
+                                            style={{ margin: '2.5px' }}
+                                            data-bs-toggle="tooltip"
+                                            data-bs-placement="top"
+                                            title="Update Timestamp"
+                                        >
+                                            <FontAwesomeIcon icon={faRegularClock} />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                {/* Delete Confirmation Modal */}
+                <DeleteConfirmationModal
+                    showModal={selectedItemId !== null}
+                    handleClose={() => setSelectedItemId(null)}
+                    handleConfirmedDelete={handleDelete}
+                    itemId={selectedItemId}
+                />
+                {/* Edit Modal */}
+                <EditModal
+                    showModal={showEditModal}
+                    handleClose={() => setShowEditModal(false)}
+                    itemId={selectedItemId}
+                    collectionName={selectedItemMode} // Pass the selected mode as the collection name
+                />
+                {/* ResultModal */}
+                <ResultModal
+                    showModal={showResultModal}
+                    handleClose={() => setShowResultModal(false)}
+                    itemName={selectedItemName}
+                    itemTimestamp={selectedItemTimestamp}
+                    itemDescription={selectedItemDescription}
+                    itemMode={selectedItemMode}
+                    itemId={selectedItemId} // Pass itemId to ResultModal
+                />
+            </div>
+        </div>
+    );
+}
+
+export default ModeComponent;
+

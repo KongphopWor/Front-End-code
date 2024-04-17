@@ -1,0 +1,43 @@
+import React from 'react';
+
+const DeleteConfirmationModal = ({ showModal, handleClose, handleConfirmedDelete, collectionName, itemId }) => {
+    const handleDelete = () => {
+        handleConfirmedDelete(); // Pass the correct collectionName to handleConfirmedDelete
+        handleClose(); // Close the modal after deletion
+    };
+
+    const handleBackdropClick = (event) => {
+        if (event.target === event.currentTarget) {
+            handleClose(); // Close the modal if the backdrop is clicked
+            window.location.reload(); // Reload the webpage
+        }
+    };
+
+    return (
+        <div className={`modal fade ${showModal ? 'show' : ''}`} tabIndex="-1" aria-labelledby="deleteConfirmationModalLabel" aria-hidden={!showModal} id="deleteConfirmationModal" onClick={handleBackdropClick}>
+            <div className="modal-dialog">
+                <div className="modal-content">
+                    <div className="modal-header">
+                        <h5 className="modal-title text-danger" id="deleteConfirmationModalLabel" style={{ fontWeight: 'bold'}}>DELETE THIS PROJECT?</h5>
+                        <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close" onClick={handleClose}></button>
+                    </div>
+                    <div className="modal-body">
+                        <p>Deleting the project will permanently erase data from the database, making it impossible to restore the data and graphs associated with this project.</p>
+                        <br></br>
+                        <p>Click the “Cancel” button to abort the operation.</p>
+                    </div>
+                    <div className="modal-footer">
+                        <button type="button" className="btn btn-secondary" data-bs-dismiss="modal" onClick={handleClose}>
+                            Cancel
+                        </button>
+                        <button type="button" className="btn btn-danger" data-bs-dismiss="modal" onClick={handleDelete}>
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default DeleteConfirmationModal;

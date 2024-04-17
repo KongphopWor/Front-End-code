@@ -1,0 +1,47 @@
+// Import necessary components and styles
+import 'bootstrap/dist/css/bootstrap.min.css';
+import React from 'react';
+import { Navbar, Nav, Container, Image } from 'react-bootstrap';
+import { animateScroll as scroll, scroller } from 'react-scroll'; // Import animateScroll and scroller from react-scroll
+import logo from './logo.png'; // Import the logo image
+
+const NavbarComponent = () => {
+    const scrollToTop = () => {
+        scroll.scrollToTop({
+            duration: 500,
+            smooth: 'easeInOutQuad',
+            offset: -65, // Set the offset to 20px above the top
+        });
+    };
+
+    const scrollToElement = (elementId) => {
+        scroller.scrollTo(elementId, {
+            duration: 500,
+            smooth: 'easeInOutQuad',
+            offset: -65, // Set the offset to 20px above the top
+        });
+    };
+
+    return (
+        <Navbar bg="dark" variant="dark" expand="sm" fixed="top">
+            <Container className="d-flex align-items-center">
+                {/* Use the imported logo image with CSS styling */}
+                <Image src={logo} alt="Logo" rounded className="mr-2" style={{ width: '40px', height: 'auto', marginRight: '10px' }} />
+
+                {/* Apply bold font weight to the Navbar.Brand text */}
+                <Navbar.Brand href="Webpage.html" style={{ fontWeight: 'bold' }} onClick={scrollToTop}>Pipe Inspection Dashboard</Navbar.Brand>
+                <Navbar.Toggle aria-controls="navbar1" />
+                <Navbar.Collapse id="navbar1">
+                    <Nav className="ms-auto">
+                        {/* Use scrollToElement function on click */}
+                        <Nav.Link onClick={() => scrollToElement('scanning_mode')} className="nav-link">Scanning Mode</Nav.Link>
+                        <Nav.Link onClick={() => scrollToElement('sweep_mode')} className="nav-link">Sweep Mode</Nav.Link>
+                        <Nav.Link onClick={() => scrollToElement('about_us')} className="nav-link">About us</Nav.Link>
+                    </Nav>
+                </Navbar.Collapse>
+            </Container>
+        </Navbar>
+    );
+}
+
+export default NavbarComponent;

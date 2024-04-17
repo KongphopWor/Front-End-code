@@ -1,0 +1,18 @@
+// Import necessary components and styles
+import 'bootstrap/dist/css/bootstrap.min.css';
+import React from 'react';
+import ProgramLogo from './Program_logo.png'; // Import the image
+
+const AboutUsComponent = () => {
+    return (
+        <div id="about_us" className='container-fluid bg-dark text-light' style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '150px',marginTop: '50px',width: "100%"}}>
+            <div>
+                <img src={ProgramLogo} alt="Program Logo" style={{ marginLeft: '5px',display: 'flex', justifyContent: 'center', alignItems: 'center',width: '250px', height: 'auto', marginTop: '15px' }} /> {/* Use the imported image */}
+                <p style={{ display: 'flex', justifyContent: 'center', alignItems: 'center',marginTop: '10px' }}>Developed by Kongphop Worasayan</p>
+                <p style={{ display: 'flex', justifyContent: 'center', alignItems: 'center',marginTop: '-15px', fontSize: '14px' }}>Gmail: www.kongphop@gmail.com</p> {/* Apply smaller text size */}
+            </div>
+        </div>
+    );
+}
+
+export default AboutUsComponent;
